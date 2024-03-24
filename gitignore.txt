@@ -1,0 +1,12 @@
+__pycache__
+data
+*.t7
+*.gz
+*.pt
+*.pth
+_build
+*.sw*
+*.DS_Store
+.env
+.venv
+venv/
