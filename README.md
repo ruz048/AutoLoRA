@@ -18,4 +18,15 @@ Search for the optimal rank of RoBERTa-base model on CoLA dataset
 sh glue_search.sh
 ```
 
+After obtaining optimal rank list, define the optimal ranks r_list in finetune/peft/utils/globals.py For example:
+
+```console
+r_list=[3, 2, 4, 4, 5, 3, 3, 4, 5, 3, 5, 4, 3, 3, 5, 4, 2, 5, 4, 4, 3, 4, 3, 3] 
+```
+
+Finetuning the RoBERTa-base model with optimal LoRA rank:
+
+```console
+python lora_glue.py
+```
 
