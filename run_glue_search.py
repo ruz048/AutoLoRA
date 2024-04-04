@@ -64,10 +64,9 @@ class Arch(ImplicitProblem):
     def training_step(self, batch):
 
         alphas = self.forward()
-        #print('test:arch')
+
         loss = self.roberta.module(alphas, **batch)
-        #+0.1*torch.linalg.norm(alphas, ord=1)  
-        #print('test:arch2',loss)
+
         return loss
 
 
@@ -75,17 +74,11 @@ class Roberta(ImplicitProblem):
     def training_step(self, batch):
 
         alphas = self.arch()
-        #print('test:gpt')
-        #print(batch)
 
         loss = self.module(alphas, **batch).loss 
- 
-        #print('test:gpt2',loss)
+
         return loss
 
-# See all possible arguments in src/transformers/training_args.py
-# or by passing the --help flag to this script.
-# We now keep distinct sets of args, for a cleaner separation of concerns.
 
 parser = HfArgumentParser((ModelArguments, DataTrainingArguments, TrainingArguments))
 
@@ -99,29 +92,16 @@ else:
 class NASEngine(Engine):
     @torch.no_grad()
     def validation(self):
-        #print('test:validation')
+
         alphas_q,alphas_v=self.arch.module.alphas[:,:model_args.lora_r],self.arch.module.alphas[:,model_args.lora_r:]
-        #print(alphas_q[0])
+
         r_list_q=[int(sum(alpha/torch.sum(alpha)>=1/model_args.lora_r)) for alpha in alphas_q]
         r_list_v=[int(sum(alpha/torch.sum(alpha)>=1/model_args.lora_r)) for alpha in alphas_v]
         r_list=[]
         for q,v in zip(r_list_q,r_list_v):
             r_list.append(q)
             r_list.append(v)
-        '''
-        corrects = 0
-        total = 0
-        for x, target in test_queue:
-            x, target = x.to(device), target.to(device, non_blocking=True)
-            alphas = self.arch()
-            _, correct = self.classifier.module.loss(x, alphas, target, acc=True)
-            corrects += correct
-            total += x.size(0)
-        acc = corrects / total
 
-        alphas = self.arch()
-        torch.save({"genotype": self.classifier.module.genotype(alphas)}, "genotype.t7")
-        '''
         return {"q": str(r_list_q),'v':str(r_list_v),'r':str(r_list)}
 
 training_args.use_deterministic_algorithms=False
@@ -363,14 +343,7 @@ if training_args.do_train:
     train_dataset,eval_dataset=dataset['train'],dataset['test']
     if data_args.max_train_samples is not None:
         train_dataset = train_dataset.select(range(data_args.max_train_samples))
-'''
-if training_args.do_eval:
-    if "validation" not in datasets and "validation_matched" not in datasets:
-        raise ValueError("--do_eval requires a validation dataset")
-    eval_dataset = datasets["validation_matched" if data_args.task_name == "mnli" else "validation"]
-    if data_args.max_val_samples is not None:
-        eval_dataset = eval_dataset.select(range(data_args.max_val_samples))
-'''
+
 if training_args.do_predict or data_args.task_name is not None or data_args.test_file is not None:
     if "test" not in datasets and "test_matched" not in datasets:
         raise ValueError("--do_predict requires a test dataset")
@@ -378,18 +351,10 @@ if training_args.do_predict or data_args.task_name is not None or data_args.test
     if data_args.max_test_samples is not None:
         test_dataset = test_dataset.select(range(data_args.max_test_samples))
 
-# Log a few random samples from the training set:
-#if training_args.do_train:
-#    for index in random.sample(range(len(train_dataset)), 3):
-#        logger.info(f"Sample {index} of the training set: {train_dataset[index]}.")
-#print(train_dataset[0].keys())
 train_dataloader = DataLoader(train_dataset, shuffle=True, collate_fn=default_data_collator,
                                 batch_size=training_args.per_device_train_batch_size,drop_last=True)
 eval_dataloader = DataLoader(eval_dataset, shuffle=True, collate_fn=default_data_collator,
                                 batch_size=training_args.per_device_train_batch_size,drop_last=True)
-#input_dic=next(iter(train_dataloader))
-#print(input_dic)
-#print(model(torch.zeros(config.num_hidden_layers,config.lora_r*2),**next(iter(train_dataloader))))
 
 unroll_steps=1
 train_portion=1.0
@@ -407,7 +372,7 @@ train_iters = int(
     * (num_train * train_portion // training_args.per_device_train_batch_size + 1)
     * unroll_steps
 )
-#print(train_iters)
+
 engine_config = EngineConfig(
     valid_step=report_freq * unroll_steps,
     train_iters=train_iters,
@@ -419,7 +384,6 @@ lora_parameters =[
             "params": [p for n, p in model.named_parameters() if 'lora_' in n], # if not any(nd in n for nd in no_decay)],
         }]
 
-#print([n for n, p in lm_net.named_parameters() if 'lora_' in n])
 optimizer = torch.optim.Adam(lora_parameters, lr=3e-4)
 
 arch_net=Architecture(model_args.lora_r,config.num_hidden_layers)
@@ -427,8 +391,7 @@ arch_net=Architecture(model_args.lora_r,config.num_hidden_layers)
 arch_optimizer = torch.optim.Adam(
     arch_net.parameters(),
     lr=3e-4,
-    betas=(0.5, 0.999),
-    #weight_decay=1e-3,
+    betas=(0.5, 0.999)
 )
 
 outer = Arch(

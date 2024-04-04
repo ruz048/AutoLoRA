@@ -32,9 +32,9 @@ class Arch(ImplicitProblem):
     def training_step(self, batch):
 
         alphas = self.forward()
-        #print('test:arch')
+
         loss = self.roberta.module(alphas, **batch)  
-        #print('test:arch2',loss)
+
         return loss
 
 
@@ -42,19 +42,15 @@ class Roberta(ImplicitProblem):
     def training_step(self, batch):
 
         alphas = self.arch()
-        #print('test:gpt')
-        #print(batch)
-
         loss = self.module(alphas, **batch).loss 
- 
-        #print('test:gpt2',loss)
+
         return loss
 
 
 class NASEngine(Engine):
     @torch.no_grad()
     def validation(self):
-        #print('test:validation')
+
         alphas_q,alphas_v=self.arch.module.alphas[:,:lora_dim],self.arch.module.alphas[:,lora_dim:]
         r_list_q=[int(sum(torch.nn.functional.softmax(alpha,dim=-1)>=1/lora_dim)) for alpha in alphas_q]
         r_list_v=[int(sum(torch.nn.functional.softmax(alpha,dim=-1)>=1/lora_dim)) for alpha in alphas_v]
@@ -95,9 +91,6 @@ def tokenize_and_align_labels(examples):
     return tokenized_inputs
 
 tokenized_bionlp = bionlp.map(tokenize_and_align_labels, batched=True)
-
-#print(tokenized_bionlp['train'].remove_columns("tokens")[0])
-#exit()
 
 data_collator = DataCollatorForTokenClassification(tokenizer=tokenizer)
 def collate_fn(examples):
@@ -187,62 +180,3 @@ engine_config = EngineConfig(
 
 engine = NASEngine(config=engine_config, problems=problems, dependencies=dependencies)
 engine.run()
-
-'''
-for epoch in range(num_epochs):
-    model.train()
-    #for step, batch in enumerate(tqdm(train_dataloader)):
-    epoch_loss,epoch_loss_search=0,0
-    for step, batch in enumerate((train_dataloader)):
-        batch.to(device)
-        outputs = model(**batch)
-        loss = outputs.loss
-        epoch_loss += batch_size * loss.item()
-        loss.backward()
-        optimizer.step()
-        lr_scheduler.step()
-        optimizer.zero_grad()
-        if globals.search:
-            batch = next(iter(search_dataloader))
-            #print(batch)
-            batch.to(device)
-            outputs = model(**batch)
-            loss = outputs.loss
-            epoch_loss_search += batch_size * loss.item()
-            loss.backward()
-            optimizer_a.step()
-            optimizer_a.zero_grad()
-        #print(model.base_model.model.roberta.encoder.layer[0].attention.self.query.a)
-    print('train loss epoch ',epoch+1, epoch_loss / len(train_split))
-
-    if globals.search:
-        print('train loss search epoch ',epoch+1, epoch_loss_search / len(train_split))
-        if model_checkpoint == "roberta-base" or model_checkpoint == "roberta-large":
-            query_rlist=[int(sum(torch.nn.functional.softmax(layer.attention.self.query.a,dim=0)>=1/lora_dim)) for layer in layers]
-            value_rlist=[int(sum(torch.nn.functional.softmax(layer.attention.self.value.a,dim=0)>=1/lora_dim)) for layer in layers]
-        else:
-            query_rlist=[int(sum(torch.nn.functional.softmax(layer.attention.self.query_proj.a,dim=0)>=1/lora_dim)) for layer in layers]
-            value_rlist=[int(sum(torch.nn.functional.softmax(layer.attention.self.value_proj.a,dim=0)>=1/lora_dim)) for layer in layers]
-        rlist=[]
-        for i in range(num_layers):
-            rlist.append(query_rlist[i])
-            rlist.append(value_rlist[i])
-        
-        print(rlist)
-    else:
-        model.eval()
-        pred,ref=[],[]
-        #for step, batch in enumerate(tqdm(eval_dataloader)):
-        for step, batch in enumerate((eval_dataloader)):
-            batch.to(device)
-            with torch.no_grad():
-                outputs = model(**batch)
-            predictions = outputs.logits.argmax(dim=-1)
-            pred.append(predictions.cpu().detach().numpy())
-            ref.append(batch['labels'].cpu().detach().numpy())
-            #predictions, references = predictions, batch["labels"]
-            #metric.add_batch(predictions=predictions,references=references)
-
-        eval_metric = compute_metrics(zip(pred,ref))
-        print(f"epoch {epoch}:", eval_metric)
-'''

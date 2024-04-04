@@ -21,33 +21,17 @@ from transformers import AutoModelForSequenceClassification, AutoTokenizer, get_
 from tqdm import tqdm
 
 batch_size = 16
-#model_name_or_path = "roberta-base"
-#model_name_or_path = "roberta-large"
-model_name_or_path = "microsoft/deberta-v2-xxlarge"
-#model_name_or_path ='xlm-roberta-base'
-#model_name_or_path = "microsoft/deberta-v2-xxlarge"
-num_layers=96
+model_name_or_path = "roberta-base"
 
-#task = "mrpc"
-#task = 'qqp'
-#task='qnli'
-task='sst2'
-#task='rte'
-#task='cola'
-#task='mnli'
-#task='stsb'
+num_layers=24
+
+task = "cola"
+
 peft_type = PeftType.LORA
 device = "cuda"
 
 lora_dim=8
 peft_config = LoraConfig(task_type="SEQ_CLS", inference_mode=False, r=lora_dim, lora_alpha=16, lora_dropout=0.1)
-'''
-if model_name_or_path == "roberta-base" or model_name_or_path == "roberta-large" or model_name_or_path == "xlm-roberta-base":
-    peft_config = LoraConfig(task_type="SEQ_CLS", inference_mode=False, r=lora_dim, lora_alpha=16, lora_dropout=0.1)
-else:
-    peft_config = LoraConfig(task_type="SEQ_CLS", inference_mode=False, r=lora_dim, lora_alpha=16, 
-                           lora_dropout=0.1,target_modules=['query_proj','value_proj'])
-'''
 
 lr = 1e-4
 
@@ -136,7 +120,6 @@ if globals.search:
 else:
     train_split=tokenized_datasets['train']
     if task=='mnli':
-        #valid_split=tokenized_datasets["validation_matched"]
         valid_split=concatenate_datasets([tokenized_datasets["validation_matched"], tokenized_datasets["validation_mismatched"]])
     else:
         valid_split=tokenized_datasets["validation"]
@@ -174,7 +157,7 @@ lr_scheduler = get_linear_schedule_with_warmup(
 model.to(device)
 for epoch in range(num_epochs):
     model.train()
-    #for step, batch in enumerate(tqdm(train_dataloader)):
+
     epoch_loss,epoch_loss_search=0,0
     for step, batch in enumerate((train_dataloader)):
         batch.to(device)
@@ -187,7 +170,6 @@ for epoch in range(num_epochs):
         optimizer.zero_grad()
         if globals.search:
             batch = next(iter(search_dataloader))
-            #print(batch)
             batch.to(device)
             outputs = model(**batch)
             loss = outputs.loss
@@ -195,7 +177,7 @@ for epoch in range(num_epochs):
             loss.backward()
             optimizer_a.step()
             optimizer_a.zero_grad()
-        #print(model.base_model.model.roberta.encoder.layer[0].attention.self.query.a)
+
     print('train loss epoch ',epoch+1, epoch_loss / len(train_split))
 
     if globals.search:
@@ -214,7 +196,7 @@ for epoch in range(num_epochs):
         print(rlist)
     else:
         model.eval()
-        #for step, batch in enumerate(tqdm(eval_dataloader)):
+
         for step, batch in enumerate((eval_dataloader)):
             batch.to(device)
             with torch.no_grad():
@@ -225,7 +207,7 @@ for epoch in range(num_epochs):
                 predictions = outputs.logits
             
             predictions, references = predictions, batch["labels"].float()
-            #print(predictions,references)
+
             metric.add_batch(
                 predictions=predictions,
                 references=references,

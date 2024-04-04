@@ -50,9 +50,6 @@ def tokenize_and_align_labels(examples):
 
 tokenized_bionlp = bionlp.map(tokenize_and_align_labels, batched=True)
 
-#print(tokenized_bionlp['train'].remove_columns("tokens")[0])
-#exit()
-
 data_collator = DataCollatorForTokenClassification(tokenizer=tokenizer)
 def collate_fn(examples):
     return tokenizer.pad(examples, padding="longest", return_tensors="pt",)
@@ -106,7 +103,6 @@ lr_scheduler = get_linear_schedule_with_warmup(
 model.to(device)
 for epoch in range(num_epochs):
     model.train()
-    #for step, batch in enumerate(tqdm(train_dataloader)):
     epoch_loss,epoch_loss_search=0,0
     for step, batch in enumerate((train_dataloader)):
         batch.to(device)
@@ -119,7 +115,7 @@ for epoch in range(num_epochs):
         optimizer.zero_grad()
         if globals.search:
             batch = next(iter(search_dataloader))
-            #print(batch)
+
             batch.to(device)
             outputs = model(**batch)
             loss = outputs.loss
@@ -127,7 +123,7 @@ for epoch in range(num_epochs):
             loss.backward()
             optimizer_a.step()
             optimizer_a.zero_grad()
-        #print(model.base_model.model.roberta.encoder.layer[0].attention.self.query.a)
+
     print('train loss epoch ',epoch+1, epoch_loss / len(train_split))
 
     if globals.search:
@@ -147,7 +143,7 @@ for epoch in range(num_epochs):
     else:
         model.eval()
         pred,ref=[],[]
-        #for step, batch in enumerate(tqdm(eval_dataloader)):
+
         for step, batch in enumerate((eval_dataloader)):
             batch.to(device)
             with torch.no_grad():
@@ -155,8 +151,6 @@ for epoch in range(num_epochs):
             predictions = outputs.logits.argmax(dim=-1)
             pred.append(predictions.cpu().detach().numpy())
             ref.append(batch['labels'].cpu().detach().numpy())
-            #predictions, references = predictions, batch["labels"]
-            #metric.add_batch(predictions=predictions,references=references)
 
         eval_metric = compute_metrics(zip(pred,ref))
         print(f"epoch {epoch}:", eval_metric)
