@@ -1,6 +1,9 @@
 # AutoLoRA
 
-This folder contains the implementation of AutoLoRA in RoBERTa.
+This folder contains the implementation of AutoLoRA ("AutoLoRA: Automatically Tuning Matrix Ranks in Low-Rank Adaptation
+Based on Meta Learning") in RoBERTa.
+
+Paper Link: https://arxiv.org/pdf/2403.09113.pdf
 
 ## Steps to reproduce our results
 
